@@ -6,9 +6,10 @@ sigmavalue = settings.Sigmavalue;
 lambda = settings.lambda ;         
 beta = settings.beta;
 sparsityParam = settings.sparsityParam;
+kmeansItera = settings.kmeansItera;
 
 [featureNum,sampleNum]=size(features);
-rbfCentorids = runkmeans(features',rbfHiddenSize,1);
+rbfCentorids = runkmeans(features',rbfHiddenSize,kmeansItera);
 
 sigma = repmat(sigmavalue,[1,rbfHiddenSize]);
 
@@ -28,10 +29,8 @@ visibleSize = featureNum;
 autoencoderTheta = initializeParameters(rbfHiddenSize, autoencoderHiddenSize, visibleSize);
 
 addpath minFunc/
-options = struct;
-options.Method = 'lbfgs'; 
-options.maxIter = 1;
-options.display = 'on';
+%options = struct;
+options = settings.autoencoderOptions;
 
 optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
                                    rbfHiddenSize, autoencoderHiddenSize, visibleSize,...
@@ -41,10 +40,8 @@ optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
 %% Fine-tuning
 
 optAllTheta = [optAutoencoderTheta; rbfCentorids(:);sigma(:)];
-fineTuningOptions = struct;
-fineTuningOptions.Method = 'lbfgs'; 
-fineTuningOptions.maxIter = 1;
-fineTuningOptions.display = 'on';
+%fineTuningOptions = struct;
+fineTuningOptions = settings.fineTuningOptions;
 inputSize = featureNum;
 finetuningTheta =  minFunc( @(p) doubleLayerRbfAutoencoderCost(p, inputSize, rbfHiddenSize,autoencoderHiddenSize,... 
                                                                                              visibleSize,lambda, beta,sparsityParam,features), ...
