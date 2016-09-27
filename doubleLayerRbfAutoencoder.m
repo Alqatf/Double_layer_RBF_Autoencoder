@@ -6,6 +6,9 @@ sigmavalue = settings.Sigmavalue;
 lambda = settings.lambda ;         
 beta = settings.beta;
 sparsityParam = settings.sparsityParam;
+
+fprintf('Training the RBF centers ... \n');
+fprintf('\n');
 kmeansItera = settings.kmeansItera;
 
 [featureNum,sampleNum]=size(features);
@@ -21,7 +24,7 @@ for i = 1:rbfHiddenSize  % calculate the output node by nodeb
     clear c_matrix
     clear diff;
 end
-rbfLayerOutputFeatures = exp(distance);
+rbfLayerOutputFeatures = exp(-distance);
 
 %dataOutputRbfLayer = 
 %% Calculate the autoencoder layer
@@ -31,14 +34,18 @@ autoencoderTheta = initializeParameters(rbfHiddenSize, autoencoderHiddenSize, vi
 addpath minFunc/
 %options = struct;
 options = settings.autoencoderOptions;
-
+fprintf('\n');
+fprintf('Training the autoencoder layers ... \n');
+fprintf('\n');
 optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
                                    rbfHiddenSize, autoencoderHiddenSize, visibleSize,...
                                    lambda, sparsityParam,beta, ...
                                     features,rbfLayerOutputFeatures), ...
                               autoencoderTheta , options);
 %% Fine-tuning
-
+fprintf('\n');
+fprintf('Start the fine tuning ... \n');
+fprintf('\n')
 optAllTheta = [optAutoencoderTheta; rbfCentorids(:);sigma(:)];
 %fineTuningOptions = struct;
 fineTuningOptions = settings.fineTuningOptions;
@@ -46,6 +53,10 @@ inputSize = featureNum;
 finetuningTheta =  minFunc( @(p) doubleLayerRbfAutoencoderCost(p, inputSize, rbfHiddenSize,autoencoderHiddenSize,... 
                                                                                              visibleSize,lambda, beta,sparsityParam,features), ...
                                                                                              optAllTheta,fineTuningOptions);
-netConfig.Theta = finetuningTheta;
+netConfig.theta = finetuningTheta;
+netConfig.inputSize = featureNum;
+netConfig.rbfHiddenSize = rbfHiddenSize;
+netConfig.autoencoderHiddenSize = autoencoderHiddenSize;
+netConfig.visibleSize = visibleSize ;
 end
 
