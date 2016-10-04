@@ -37,11 +37,35 @@ options = settings.autoencoderOptions;
 fprintf('\n');
 fprintf('Training the autoencoder layers ... \n');
 fprintf('\n');
-optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
+
+if strcmp(settings.autoencoderMinibatch, 'off')
+    optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
                                    rbfHiddenSize, autoencoderHiddenSize, visibleSize,...
                                    lambda, sparsityParam,beta, ...
                                     features,rbfLayerOutputFeatures), ...
                               autoencoderTheta , options);
+else 
+     autoencoderBatchSize = sampleNum/settings.autoencoderBatchNum;
+     %indices = randperm(sampleNum, autoencoderBatchSize);
+     %rbfLayerOutputFeaturesBatch = rbfLayerOutputFeatures(:, indices);    
+     maxepoch = settings.autoencoderMaxepoch;
+     
+     for i = 1: maxepoch
+        indices = randperm(sampleNum, autoencoderBatchSize);
+        rbfLayerOutputFeaturesBatch = rbfLayerOutputFeatures(:, indices);
+        featuresBatch = features(:, indices); 
+       
+        fprintf(' ... Start training the %dth minibatch... \n',i);
+            
+        optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
+                                   rbfHiddenSize, autoencoderHiddenSize, visibleSize,...
+                                   lambda, sparsityParam,beta, ...
+                                   featuresBatch,rbfLayerOutputFeaturesBatch), ...
+                                   autoencoderTheta , options);
+        autoencoderTheta =  optAutoencoderTheta;                  
+     end
+end
+
 %% Fine-tuning
 fprintf('\n');
 fprintf('Start the fine tuning ... \n');
