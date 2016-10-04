@@ -15,30 +15,28 @@ kmeansItera = settings.kmeansItera;
 rbfCentorids = runkmeans(features',rbfHiddenSize,kmeansItera);
 
 sigma = repmat(sigmavalue,[1,rbfHiddenSize]);
-
-for i = 1:rbfHiddenSize  % calculate the output node by nodeb
-    c_vector = rbfCentorids(i,:); % get the center of this node
-    c_matrix = repmat(c_vector,[sampleNum,1]);
-    diff =  features - c_matrix';
-    distance(i,:) = (arrayfun(@(x)(sum(diff(:,x).^2)),1:size(diff,2)))/(2*(sigma(i))^2);
-    clear c_matrix
-    clear diff;
-end
-rbfLayerOutputFeatures = exp(-distance);
+if strcmp(settings.autoencoderMinibatch, 'off')
+    for i = 1:rbfHiddenSize  % calculate the output node by nodeb
+        c_vector = rbfCentorids(i,:); % get the center of this node
+        c_matrix = repmat(c_vector,[sampleNum,1]);
+        diff =  features - c_matrix';
+        distance(i,:) = (arrayfun(@(x)(sum(diff(:,x).^2)),1:size(diff,2)))/(2*(sigma(i))^2);
+        clear c_matrix
+        clear diff;
+    end
+    rbfLayerOutputFeatures = exp(-distance);
 
 %dataOutputRbfLayer = 
 %% Calculate the autoencoder layer
-visibleSize = featureNum; 
-autoencoderTheta = initializeParameters(rbfHiddenSize, autoencoderHiddenSize, visibleSize);
+    visibleSize = featureNum; 
+    autoencoderTheta = initializeParameters(rbfHiddenSize, autoencoderHiddenSize, visibleSize);
 
-addpath minFunc/
-%options = struct;
-options = settings.autoencoderOptions;
-fprintf('\n');
-fprintf('Training the autoencoder layers ... \n');
-fprintf('\n');
-
-if strcmp(settings.autoencoderMinibatch, 'off')
+    addpath minFunc/
+    %options = struct;
+    options = settings.autoencoderOptions;
+    fprintf('\n');
+    fprintf('Training the autoencoder layers ... \n');
+    fprintf('\n');
     optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
                                    rbfHiddenSize, autoencoderHiddenSize, visibleSize,...
                                    lambda, sparsityParam,beta, ...
@@ -46,15 +44,29 @@ if strcmp(settings.autoencoderMinibatch, 'off')
                               autoencoderTheta , options);
 else 
      autoencoderBatchSize = sampleNum/settings.autoencoderBatchNum;
-     %indices = randperm(sampleNum, autoencoderBatchSize);
-     %rbfLayerOutputFeaturesBatch = rbfLayerOutputFeatures(:, indices);    
      maxepoch = settings.autoencoderMaxepoch;
-     
+     visibleSize = featureNum; 
+     autoencoderTheta = initializeParameters(rbfHiddenSize, autoencoderHiddenSize, visibleSize);
+
+     addpath minFunc/
+     %options = struct;
+     options = settings.autoencoderOptions;
+     fprintf('\n');
+     fprintf('Training the autoencoder layers ... \n');
+     fprintf('\n');
      for i = 1: maxepoch
         indices = randperm(sampleNum, autoencoderBatchSize);
-        rbfLayerOutputFeaturesBatch = rbfLayerOutputFeatures(:, indices);
         featuresBatch = features(:, indices); 
-       
+        for i = 1:rbfHiddenSize  % calculate the output node by nodeb
+            c_vector = rbfCentorids(i,:); % get the center of this node
+            c_matrix = repmat(c_vector,[autoencoderBatchSize,1]);
+            diff =  featuresBatch - c_matrix';
+            distance(i,:) = (arrayfun(@(x)(sum(diff(:,x).^2)),1:size(diff,2)))/(2*(sigma(i))^2);
+            clear c_matrix
+            clear diff;
+        end
+        rbfLayerOutputFeaturesBatch = exp(-distance);
+                     
         fprintf(' ... Start training the %dth minibatch... \n',i);
             
         optAutoencoderTheta = minFunc( @(p) sparseAutoEncoderLayerCost(p, ...
